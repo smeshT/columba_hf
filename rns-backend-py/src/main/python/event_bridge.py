@@ -34,7 +34,9 @@ The Kotlin sub-impls attach them at the point they create those objects.
 """
 
 import json
+import os
 import queue
+import shutil
 import signal
 import threading
 
@@ -1016,6 +1018,72 @@ def prime_incoming_message_size_limit(router, limit_kb):
         f"{_incoming_message_size_limit_kb or 'unlimited'} KB",
         RNS.LOG_DEBUG,
     )
+
+
+def disable_delivery_ratchets(destination):
+    """Keep LXMF delivery ratchets off for a station that publishes its key.
+
+    Call this AFTER ``LXMRouter.register_delivery_identity()`` and with the
+    destination it returned. Upstream LXMF 1.3.0 calls
+    ``destination.enable_ratchets(...)`` unconditionally inside that method, so
+    there is no flag to pre-set; the destination must be rewritten afterwards.
+
+    The single lever is ``Destination.ratchets``. RNS ``Destination._announce``
+    does::
+
+        ratchet = b""
+        if self.ratchets != None:
+            self.rotate_ratchets()
+            ratchet = RNS.Identity._ratchet_public_bytes(self.ratchets[0])
+
+    so setting ``ratchets = None`` and blanking the path yields a 32-byte
+    shorter announce with ``context_flag`` 0, and peers encrypt to the base
+    identity key instead of a rotated ratchet.
+
+    Why it matters: ratchets rotate a receiver-side key. While one is active,
+    peers encrypt to the ratchet rather than to the destination's published
+    key, so a station that publishes its delivery key cannot decrypt its own
+    traffic with that key.
+
+    This only helps a *new* identity. An identity that has already announced a
+    ratchet has it cached at peers for roughly RATCHET_EXPIRY (~30 days); this
+    cannot reach back and clear those caches.
+    """
+    if destination is None:
+        return False
+
+    try:
+        ratchet_path = getattr(destination, "ratchets_path", None)
+        destination.ratchets = None
+        destination.ratchets_path = None
+        destination.latest_ratchet_time = 0
+    except Exception as e:  # noqa: BLE001 - never fatal
+        RNS.log(
+            f"event_bridge: could not disable delivery ratchets: {e}",
+            RNS.LOG_WARNING,
+        )
+        return False
+
+    # Remove the persisted key material so nothing can reload it later. The
+    # destination no longer points at it, but leaving a valid signed ratchet
+    # file on disk invites a future reload to re-enable announces.
+    removed = False
+    if ratchet_path and os.path.isfile(ratchet_path):
+        try:
+            os.unlink(ratchet_path)
+            removed = True
+        except OSError as e:  # noqa: BLE001
+            RNS.log(
+                f"event_bridge: could not remove ratchet file {ratchet_path}: {e}",
+                RNS.LOG_WARNING,
+            )
+
+    RNS.log(
+        "event_bridge: LXMF delivery ratchets disabled for this identity"
+        + (" (removed persisted ratchet file)" if removed else ""),
+        RNS.LOG_NOTICE,
+    )
+    return True
 
 
 def _apply_incoming_limit_to_router():

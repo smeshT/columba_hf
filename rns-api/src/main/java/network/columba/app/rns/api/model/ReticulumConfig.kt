@@ -119,6 +119,24 @@ data class ReticulumConfig(
      * 0 = unlimited (explicit user choice).
      */
     val incomingMessageSizeLimitKb: Long? = null,
+    // ==================== LXMF delivery ratchets ====================
+    /**
+     * When true, the backend must NOT enable LXMF delivery ratchets for this
+     * instance's delivery destination.
+     *
+     * Ratchets rotate a receiver-side key: while one is active, peers encrypt
+     * to the ratchet rather than to the destination's published key, so traffic
+     * cannot be decrypted with that key. A station that publishes its delivery
+     * key needs them off.
+     *
+     * Must be applied BEFORE the delivery identity is registered, because
+     * registration is what enables ratchets. Only meaningful for a freshly
+     * created identity: ratchets an identity has already announced stay cached
+     * at peers for roughly 30 days.
+     *
+     * null / false = leave the backend default (ratchets enabled).
+     */
+    val deliveryRatchetsDisabled: Boolean? = null,
     // ==================== RNS 1.6.0 Announce Ingress Filter ====================
     /**
      * Master switch for the `[filter] required_only` announce ingress filter
@@ -208,6 +226,7 @@ data class ReticulumConfig(
             interfaceDiscoverySources == other.interfaceDiscoverySources &&
             requiredDiscoveryValue == other.requiredDiscoveryValue &&
             incomingMessageSizeLimitKb == other.incomingMessageSizeLimitKb &&
+            deliveryRatchetsDisabled == other.deliveryRatchetsDisabled &&
             announceFilterEnabled == other.announceFilterEnabled &&
             announceFilterWhileHosting == other.announceFilterWhileHosting &&
             announceFilterAllowNodes == other.announceFilterAllowNodes &&
@@ -237,6 +256,7 @@ data class ReticulumConfig(
         result = 31 * result + (interfaceDiscoverySources?.hashCode() ?: 0)
         result = 31 * result + requiredDiscoveryValue
         result = 31 * result + (incomingMessageSizeLimitKb?.hashCode() ?: 0)
+        result = 31 * result + (deliveryRatchetsDisabled?.hashCode() ?: 0)
         result = 31 * result + announceFilterEnabled.hashCode()
         result = 31 * result + announceFilterWhileHosting.hashCode()
         result = 31 * result + announceFilterAllowNodes.hashCode()
@@ -278,6 +298,7 @@ data class ReticulumConfig(
             "interfaceDiscoverySources=$interfaceDiscoverySources, " +
             "requiredDiscoveryValue=$requiredDiscoveryValue, " +
             "incomingMessageSizeLimitKb=$incomingMessageSizeLimitKb, " +
+            "deliveryRatchetsDisabled=$deliveryRatchetsDisabled, " +
             "announceFilterEnabled=$announceFilterEnabled, " +
             "announceFilterWhileHosting=$announceFilterWhileHosting, " +
             "announceFilterAllowNodes=$announceFilterAllowNodes, " +

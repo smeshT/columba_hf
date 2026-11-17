@@ -76,6 +76,7 @@ class IdentityRepository
             destinationHash: String,
             filePath: String,
             keyData: ByteArray? = null,
+            ratchetsDisabled: Boolean = false,
         ): Result<LocalIdentityEntity> =
             withContext(ioDispatcher) {
                 try {
@@ -103,6 +104,7 @@ class IdentityRepository
                             createdTimestamp = System.currentTimeMillis(),
                             lastUsedTimestamp = 0L,
                             isActive = false,
+                            ratchetsDisabled = ratchetsDisabled,
                         )
                     Log.d(TAG, "createIdentity: Calling DAO insert...")
                     identityDao.insert(entity)

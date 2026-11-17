@@ -75,7 +75,7 @@ import network.columba.app.data.db.entity.ThreadEntity
         PreferredPropagationNodeEntity::class,
         ThreadEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 // Room DB facade: one accessor per DAO; count grows with every new table, not complexity.
@@ -594,6 +594,20 @@ abstract class ColumbaDatabase : RoomDatabase() {
          * v11, whose drafts do not yet have the threadId expected by main's 11 → 12.
          * Main v11 still uses both authoritative main migrations through this route.
          */
+        val MIGRATION_13_14: Migration =
+            object : Migration(13, 14) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    // Opt-in per-identity switch that keeps LXMF delivery ratchets
+                    // off, so a station publishing its delivery key stays
+                    // decryptable with that key. Existing identities default to
+                    // false: disabling ratchets cannot repair an identity that has
+                    // already announced one, so we never flip it retroactively.
+                    db.execSQL(
+                        "ALTER TABLE local_identities ADD COLUMN ratchetsDisabled INTEGER NOT NULL DEFAULT 0",
+                    )
+                }
+            }
+
         val MIGRATION_11_13: Migration =
             object : Migration(11, 13) {
                 override fun migrate(db: SupportSQLiteDatabase) {
@@ -703,6 +717,7 @@ abstract class ColumbaDatabase : RoomDatabase() {
                 MIGRATION_11_12,
                 MIGRATION_11_13,
                 MIGRATION_12_13,
+                MIGRATION_13_14,
             )
 
         /**

@@ -74,7 +74,7 @@ class IdentityManagerViewModel
         /**
          * Create a new identity with the given display name.
          */
-        fun createNewIdentity(displayName: String) {
+        fun createNewIdentity(displayName: String, ratchetsDisabled: Boolean = false) {
             viewModelScope.launch {
                 try {
                     Log.d(TAG, "createNewIdentity: Starting creation")
@@ -124,6 +124,7 @@ class IdentityManagerViewModel
                             destinationHash = destinationHash,
                             filePath = filePath,
                             keyData = keyData,
+                            ratchetsDisabled = ratchetsDisabled,
                         )
 
                     if (createResult.isSuccess) {
