@@ -46,6 +46,21 @@ data class LocalIdentityEntity(
     val iconName: String? = null,
     val iconForegroundColor: String? = null, // Hex RGB e.g., "FFFFFF"
     val iconBackgroundColor: String? = null, // Hex RGB e.g., "1E88E5"
+    /**
+     * Opt-in: do not enable LXMF delivery ratchets for this identity.
+     *
+     * Ratchets rotate a receiver-side key, so while one is active peers encrypt
+     * to the ratchet instead of the destination's published key. A station that
+     * publishes its delivery key (a public callsign registry, or any setup that
+     * requires its traffic be decryptable with the published key) must not
+     * ratchet.
+     *
+     * This can only take effect from creation: once an identity has announced a
+     * ratchet, peers cache it for roughly 30 days, so switching it on for an
+     * existing identity does nothing useful. Hence it is settable only at
+     * creation time and is not editable afterwards.
+     */
+    val ratchetsDisabled: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

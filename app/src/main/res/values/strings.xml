@@ -2269,6 +2269,11 @@
     <string name="identity_export_as_file">Export as File</string>
     <string name="identity_copy_key_as_text">Copy Key as Text</string>
     <string name="identity_create_dialog_body">Enter a display name for this identity. You can use this to manage different personas or use cases.</string>
+    <string name="identity_advanced_section">Advanced</string>
+    <string name="identity_advanced_expand">Show advanced options</string>
+    <string name="identity_advanced_collapse">Hide advanced options</string>
+    <string name="identity_ratchets_disabled_label">Turn off ratchets</string>
+    <string name="identity_ratchets_disabled_body">Useful for regulated radio segments. This compromises the identity\'s security going forward — anyone holding your published key can decrypt future traffic to this identity. Ratchet keys normally rotate so that a disclosed key stops working; turning this off removes that rotation. Only available for new IDs: an identity that has already announced a ratchet cannot be repaired here.</string>
     <string name="identity_create_placeholder">e.g., Work, Personal, Anonymous</string>
     <string name="identity_create_action">CREATE</string>
     <string name="identity_cancel_action">CANCEL</string>

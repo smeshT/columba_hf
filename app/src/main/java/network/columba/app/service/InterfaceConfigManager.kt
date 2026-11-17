@@ -356,6 +356,17 @@ class InterfaceConfigManager
                     val incomingMessageSizeLimitKb =
                         settingsRepository.getIncomingMessageSizeLimitKb().toLong()
 
+                    // Carry the active identity's ratchet opt-out into the backend
+                    // config. Ratchets must be off before the delivery identity is
+                    // registered, and only a brand-new identity can honour this.
+                    val deliveryRatchetsDisabled = activeIdentity?.ratchetsDisabled == true
+                    if (deliveryRatchetsDisabled) {
+                        Log.d(
+                            TAG,
+                            "Active identity ${activeIdentity.identityHash.take(8)}... has delivery ratchets disabled",
+                        )
+                    }
+
                     // Load discovery settings
                     val discoverInterfaces = settingsRepository.getDiscoverInterfacesEnabled()
                     val savedAutoconnect = settingsRepository.getAutoconnectDiscoveredCount()
@@ -415,6 +426,7 @@ class InterfaceConfigManager
                             autoconnectIfacOnly = autoconnectIfacOnly,
                             autoconnectInterfaceMode = autoconnectInterfaceMode,
                             incomingMessageSizeLimitKb = incomingMessageSizeLimitKb,
+                            deliveryRatchetsDisabled = deliveryRatchetsDisabled,
                         )
 
                     val initResult = rnsCore.initialize(config)

@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +30,8 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -53,6 +57,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -280,8 +285,8 @@ fun IdentityManagerScreen(
     if (showCreateDialog) {
         CreateIdentityDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { displayName ->
-                viewModel.createNewIdentity(displayName)
+            onCreate = { displayName, ratchetsDisabled ->
+                viewModel.createNewIdentity(displayName, ratchetsDisabled)
                 showCreateDialog = false
             },
         )
@@ -650,9 +655,14 @@ private fun IdentityCard(
 @Composable
 private fun CreateIdentityDialog(
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit,
+    onCreate: (String, Boolean) -> Unit,
 ) {
     var displayName by remember { mutableStateOf("") }
+    // Off by default. Only meaningful for a brand-new identity, because an
+    // identity that has already announced a ratchet is cached by peers for
+    // ~30 days and cannot be repaired afterwards.
+    var ratchetsDisabled by remember { mutableStateOf(false) }
+    var advancedExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -668,11 +678,71 @@ private fun CreateIdentityDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                // Collapsed by default: this weakens the identity, so it should
+                // be a deliberate choice rather than something a user trips over
+                // while naming an identity.
+                TextButton(
+                    onClick = { advancedExpanded = !advancedExpanded },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.identity_advanced_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Icon(
+                            imageVector =
+                                if (advancedExpanded) {
+                                    Icons.Default.ExpandLess
+                                } else {
+                                    Icons.Default.ExpandMore
+                                },
+                            contentDescription =
+                                if (advancedExpanded) {
+                                    stringResource(R.string.identity_advanced_collapse)
+                                } else {
+                                    stringResource(R.string.identity_advanced_expand)
+                                },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                AnimatedVisibility(visible = advancedExpanded) {
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { ratchetsDisabled = !ratchetsDisabled },
+                    ) {
+                        Checkbox(
+                            checked = ratchetsDisabled,
+                            onCheckedChange = { ratchetsDisabled = it },
+                        )
+                        Column(modifier = Modifier.padding(start = 8.dp, top = 12.dp)) {
+                            Text(
+                                text = stringResource(R.string.identity_ratchets_disabled_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.identity_ratchets_disabled_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onCreate(displayName) },
+                onClick = { onCreate(displayName, ratchetsDisabled) },
                 enabled = displayName.isNotBlank(),
             ) {
                 Text(stringResource(R.string.identity_create_action))

@@ -425,6 +425,22 @@ class PythonRnsRuntime(
             identity,
             config.displayName ?: "",
         )
+
+        // Keep delivery ratchets off for identities that publish their key.
+        // Upstream LXMF calls destination.enable_ratchets(...) unconditionally
+        // inside register_delivery_identity, so there is no pre-set flag: the
+        // destination has to be rewritten after it is returned.
+        if (config.deliveryRatchetsDisabled == true) {
+            runCatching {
+                eventBridge.callAttr("disable_delivery_ratchets", localDestination)
+            }.onFailure {
+                Log.w(
+                    TAG,
+                    "Failed to disable delivery ratchets: ${it.message}",
+                    it,
+                )
+            }
+        }
         eventBridge.callAttr(
             "install_destination_resolver",
             KotlinDestinationResolverBridge(this),
