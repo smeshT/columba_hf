@@ -1,52 +1,76 @@
-<p align="center">
-  <img src="./columba-icon.svg" width="200" height="200" alt="alt text" />
-</p>
+# Columba — HF build (stable delivery keys)
 
-# Columba
+A build of [Columba](https://github.com/torlando-tech/columba) for stations operating Reticulum over
+HF, where a station's LXMF delivery key must stay the same so that others can encrypt to the key it
+published.
 
-Columba is a simple messaging and voice app for the [Reticulum](https://github.com/markqvist/Reticulum) network on Android. Send [LXMF](https://github.com/markqvist/LXMF) messages and make [LXST](https://github.com/markqvist/LXST/tree/master/LXST) voice calls without relying on the internet, cell towers, or any central servers.
+Upstream Columba is unchanged in every other respect. This is not a competing app and not a general-purpose
+fork — it is one setting, for one situation.
 
-Built with a native Android interface and Material Design 3, Columba brings mesh networking to your pocket in a familiar, easy-to-use package.
+## The problem this solves
 
-<p align="center">
-  <img src="./docs/screenshots/01_contacts.png" width="32%" alt="Contacts">
-  <img src="./docs/screenshots/02_chats.png" width="32%" alt="Chats">
-  <img src="./docs/screenshots/03_map.png" width="32%" alt="Map">
-  <img src="./docs/screenshots/04_conversation.png" width="32%" alt="Conversation">
-  <img src="./docs/screenshots/05_call.png" width="32%" alt="Voice call">
-  <img src="./docs/screenshots/06_interfaces.png" width="32%" alt="Interfaces">
-</p>
+Reticulum ratchets rotate a destination's key and advertise the new one. Peers then encrypt to the
+ratchet instead of the published key. For ordinary messaging that is a privacy feature and you want
+it on.
 
-## What You Can Do
+For an HF station that publishes its delivery key — in a callsign registry, a directory page, or a
+frequency listing — it breaks the whole point: the station can no longer decrypt what people send to
+the key it told them to use.
 
-- **Message without infrastructure** - Send messages even when the internet is down or unavailable
-- **Real time voice calls** - Private, encrypted voice calls. Different quality profiles scale from LoRa to fiber
-- **Connect multiple ways** - Use Bluetooth LE to connect to those around you anywhere, Wifi for those at home, LoRa radio via [RNode](https://github.com/markqvist/RNode_Firmware) for those at a distance, or use TCP to connect to any Reticulum server around the world 
-- **Stay private** - End-to-end encryption with no accounts, no tracking, and no central servers
-- **Share location** - Share your location securely with others, viewable from a dedicated map
-- **Download maps for offline use** - Download or import map files. Supports vector and raster, in MBTiles format
-- **Browse NomadNetwork** - Access nomadnet pages over Reticulum networks
-- **Build your network** - Help relay traffic for others and expand the mesh
-- **Keep your identity** - Generate your messaging identity right on your device
-- **Manage multiple identities** - Easily swap between multiple identities
-- **Export and import identities** - Keep an external backup of your keys, or migrate to a new device. Import from other Reticulum clients like [Sideband](https://github.com/markqvist/Sideband)
-- **Share your identity via QR Code** - Built in QR code scanner and generator for sharing your identity with others
-- **Custom Color Themes** - Don't like the default colors? Rice to your heart's content! 
+There is no way to turn ratchets off in a released Columba build, and an already-advertised ratchet
+cannot be recalled, because peers cache it for about 30 days. So this has to be decided when an
+identity is created.
 
-## Getting Started
+## What this build adds
 
-Download the latest release from [Releases](https://github.com/torlando-tech/columba/releases) and install on your Android device. See [SECURITY.md](./SECURITY.md) for APK verification instructions.
+One option, off by default, behind an **Advanced** disclosure when creating a new identity:
 
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/torlando-tech/columba"><img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" height="60" alt="Get it on Obtainium"></a>
+> **Turn off ratchets** — useful for regulated radio segments. This compromises the identity's
+> security going forward. Only available for new IDs.
 
-Alternatively, you can download the apk via [NomadNet](https://github.com/markqvist/NomadNet) at `8d1788fdb4e9f85303cfdf7481e721c7:/page/index.mu`
+Tick it, and that identity announces without a ratchet. Every other identity in the app behaves
+exactly as upstream.
 
-## About Reticulum
+## Install
 
-[Reticulum](https://github.com/markqvist/Reticulum) is a networking stack that lets devices communicate directly with each other, forming resilient mesh networks. It is optimized for low bandwidth, high latency connections, and can communicate over nearly any medium. Columba uses [LXMF](https://github.com/markqvist/LXMF) (Lightweight Extensible Message Format) to send messages across the Reticulum network, and uses a native Android implementation of [ble-reticulum](https://github.com/torlando-tech/ble-reticulum) to enable messaging over BLE with other Android and Linux devices.
+Grab the APK from the releases page. It is arm64 and a debug build, so Android will warn you about
+installing from outside the store — that warning is normal for sideloaded builds.
 
-Want to learn more? Visit [Reticulum's documentation](https://reticulum.network/).
+**Create a new identity and tick the box.** An existing identity cannot be repaired: if it has
+already announced, peers have cached its ratchet and will keep using it.
 
-## Why "Columba"
+## Verify it worked
 
-Columba, latin for "dove," is a [constellation](https://en.wikipedia.org/wiki/Columba_(constellation)) in the southern sky depicting a dove. Doves are commonly a symbol of peace and hope, and have been used as messengers throughout history. 
+If you run Reticulum on a computer, the announce is the ground truth:
+
+```
+sqlite3 ~/.reticulum/storage/known_destinations.db \
+  "select count(*) from ratchets where destination_hash = X'<your lxmf.delivery hash>'"
+```
+
+`0` means the station is not ratcheting. `1` means it is, and peers will encrypt to that ratchet
+rather than your published key.
+
+## Status and honesty
+
+This build works for the purpose above, tested on one station. It is a patch of a few dozen lines,
+not a rewrite, and it is not something to rely on for anything else.
+
+I am an amateur radio operator, not an Android developer. The change was made with an AI assistant.
+I can tell you what I observed on my own station; I cannot speak to its quality more broadly. Read
+the patch if that matters to you — it is small.
+
+If upstream ever adds this setting, use upstream. I would rather this build became unnecessary.
+
+## Which upstream version
+
+Built from `torlando-tech/columba` at `f88b006`. Rebased when upstream changes in ways that affect
+the patch; otherwise it does not move.
+
+The native (Kotlin) backend is not patched in this build — only the Python backend. That is the
+default for release builds, and it works.
+
+## Credits and licence
+
+All credit to [torlando-tech](https://github.com/torlando-tech) for Columba, and to
+[markqvist](https://github.com/markqvist) for Reticulum, LXMF and LXST. Same licence as upstream.
