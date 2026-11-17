@@ -479,6 +479,14 @@ class NativeRnsBackendImpl(
                 storagePath = config.storagePath,
             )
 
+        // Keep delivery ratchets off for identities that publish their key.
+        // Must precede registerDeliveryIdentity, which is what enables them.
+        // Keep delivery ratchets off for identities that publish their key, so
+        // peers encrypt to the published key rather than a rotated ratchet. This
+        // has to be decided at registration: ratchets are enabled there, and a
+        // ratchet already advertised cannot be recalled.
+        val ratchetsDisabled = config.deliveryRatchetsDisabled == true
+
         // Apply the persisted incoming-message size limit to the fresh router
         // BEFORE the delivery destination is registered, so the first DIRECT
         // resource advertisement is evaluated against the user's configured
@@ -496,7 +504,13 @@ class NativeRnsBackendImpl(
             router!!.registerDeliveryIdentity(
                 identity = identity,
                 displayName = config.displayName,
+                enableRatchets = !ratchetsDisabled,
             )
+
+        if (ratchetsDisabled) {
+            Log.i(TAG, "Delivery ratchets disabled for this identity")
+        }
+
 
         // Preserve the upstream verification result, including unknown-source
         // evidence. LXMF-kt rejects known-invalid signatures before this callback.
